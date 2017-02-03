@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-//using System.Threading;
 using Xamarin.Forms;
 using RPNlib;
 
@@ -10,116 +9,76 @@ namespace S_Calc
 {
     public partial class MainPage : ContentPage
     {
-        Entry Input, Output, Precision;
-        Label PrecisionLabel, ColorLabel;
-        Picker Pick;
         RPN_Real r;
-        string errorMsg;
-        Action<string> act;
-        //Thread t;
-
-        const string _font_family = "Times New Roman";
-        const double _font_size = 25;
-        const double _font_size_settings = 16;
-
+        string errorMsg, ExchangeBuffer = string.Empty,tmp=string.Empty;
+        List<string> history;
+        const int _history_list_max_limit = 100;
         public MainPage()
         {
             InitializeComponent();
             r = new RPN_Real();
-            act = new Action<string>((res) =>
-            {
-                Output.Text = string.Format($" = {res}");
-            });
-
-
-            StackLayout IOLayout = new StackLayout();
-            Input = new Entry();
-            Input.TextChanged += Input_TextChanged;            
-            Input.FontFamily = _font_family;
-            Input.FontSize = _font_size;      
-            Output = new Entry();
-            Output.Placeholder = " = ";
-            Output.FontSize = _font_size;
-            Output.FontFamily = _font_family;
-
-            Precision = new Entry();
-            Precision.Text = "4";
-            Precision.TextChanged += Precision_TextChanged;
-            Precision.FontFamily = _font_family;
-            Precision.FontSize = _font_size;
-
-            PrecisionLabel = new Label();
-            PrecisionLabel.Text = "Количество знаков после запятой:";
-            PrecisionLabel.FontFamily = _font_family;
-            PrecisionLabel.FontSize = _font_size_settings;
-            PrecisionLabel.HorizontalOptions = LayoutOptions.Start;
-            PrecisionLabel.VerticalOptions = LayoutOptions.End;
-
-            ColorLabel = new Label();
-            ColorLabel.Text = "Цвет фона:";
-            ColorLabel.FontFamily = _font_family;
-            ColorLabel.FontSize = _font_size_settings;
-            ColorLabel.HorizontalOptions = LayoutOptions.Start;
-            ColorLabel.VerticalOptions = LayoutOptions.End;
-
-            Pick = new Picker
-            {
-                Title = "Белый"
-            };
-            Pick.Items.Add("Синий");
-            Pick.Items.Add("Белый");
-            Pick.Items.Add("Зеленый");
-
-            Pick.SelectedIndexChanged += Pick_SelectedIndexChanged;
-
-            IOLayout.Children.Add(Input);
-            IOLayout.Children.Add(Output);
-            IOLayout.Children.Add(PrecisionLabel);
-            IOLayout.Children.Add(Precision);
-            IOLayout.Children.Add(ColorLabel);
-            IOLayout.Children.Add(Pick);
-            Content = IOLayout;
-
-           
+            history = new List<string>();
+            history.Add(string.Empty);
+            undoButton.IsEnabled = false;
         }
-
-        private void Pick_SelectedIndexChanged(object sender, EventArgs e)
+        void history_list_add(string s)
         {
-            switch (Pick.Items[Pick.SelectedIndex])
-            {
-                case "Белый": BackgroundColor = Color.White; break;
-                case "Синий": BackgroundColor = Color.Aqua; break;
-                case "Зеленый": BackgroundColor = Color.Lime; break;
-            }
+            history.Add(s);
+            if (history.Count > _history_list_max_limit) { history.RemoveAt(0); }
         }
-
-        private void Precision_TextChanged(object sender, TextChangedEventArgs e)
+        //Цифры, точка, запятая, операторы
+        private void KeyClicked(object sender, EventArgs e)
+        {
+            Input.Text += ((Button)sender).Text.Replace("√", "√()");
+        }
+        private void KeyUndoClicked(object sender, EventArgs e)
         {
             try
             {
-                RPN_Real.Precision = Convert.ToUInt16(Precision.Text);
-                Input_TextChanged(Input, e);
+                history.RemoveAt(history.Count - 1);
+                tmp = history[history.Count - 1];
+                history.RemoveAt(history.Count - 1);
+                Input.Text = tmp;
+            }
+            catch { return; }
+        }
+        private void KeyBackspaceClicked(object sender, EventArgs e)
+        {
+            try
+            {
+                Input.Text = Input.Text.Remove(Input.Text.Length - 1, 1);
             }
             catch
             {
                 return;
             }
         }
-
+        private void KeyCopyClicked(object sender, EventArgs e)
+        {
+            ExchangeBuffer = Output.Text.Replace(" = ",string.Empty);
+        }
+        private void KeyPasteClicked(object sender, EventArgs e)
+        {
+            Input.Text += ExchangeBuffer;
+        }
+        private void KeyDeleteClicked(object sender, EventArgs e)
+        {
+            Input.Text = string.Empty;
+        }
         private void Input_TextChanged(object sender, TextChangedEventArgs e)
         {
-            if (Input.Text.Contains(" "))
+            history_list_add(Input.Text);
+            if (history.Count <= 1)
             {
-                Input.Text = Input.Text.Replace(" ", string.Empty);
+                undoButton.IsEnabled = false;
             }
-            act(r.ToString(Input.Text, ref errorMsg));
-            //t = new Thread(_run) { Priority = ThreadPriority.Highest };
-            //t.Start(expr);
+            else
+            {
+                undoButton.IsEnabled = true;
+            }
+            string inp = Input.Text.ReplaceAllIncorrectChars();
+            string res = r.ToString(inp, ref errorMsg);
+            Output.Text = string.Format($" = {res}");
         }
-        
-        //void _run(object expr)
-        //{
-        //    this. Invoke(act, r.ToString(expr as string, ref errorMsg));
-        //}
     }
 }
