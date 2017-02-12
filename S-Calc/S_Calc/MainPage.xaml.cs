@@ -2,8 +2,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Reflection;
 using Xamarin.Forms;
 using RPNlib;
+using Mono.CSharp;
 
 namespace S_Calc
 {
@@ -17,9 +19,12 @@ namespace S_Calc
         {
             InitializeComponent();
             r = new RPN_Real();
-            history = new List<string>();
-            history.Add(string.Empty);
+            history = new List<string>() { string.Empty};
             undoButton.IsEnabled = false;
+            Input.Unfocused += (sender, e) => 
+                {
+                    Input.Focus();
+                };
         }
         void history_list_add(string s)
         {
